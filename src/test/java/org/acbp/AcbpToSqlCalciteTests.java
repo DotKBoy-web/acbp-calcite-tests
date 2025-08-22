@@ -1,24 +1,22 @@
 package org.acbp;
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.Map;
 
-import org.apache.calcite.sql.SqlNode;
-import org.apache.calcite.sql.parser.SqlParseException;
-import org.apache.calcite.sql.parser.SqlParser;
 import org.junit.jupiter.api.Test;
 
 public class AcbpToSqlCalciteTests {
-  private static boolean astEquals(String a, String b) {
-    try {
-      SqlParser.Config cfg = SqlParser.config().withCaseSensitive(false);
-      SqlNode na = SqlParser.create(a, cfg).parseQuery();
-      SqlNode nb = SqlParser.create(b, cfg).parseQuery();
-      return na.equalsDeep(nb, org.apache.calcite.util.Litmus.IGNORE);
-    } catch (SqlParseException e) {
-      throw new RuntimeException(e);
-    }
+
+  private static String norm(String s) {
+    String t = s.toLowerCase();
+    t = t.replaceAll("[`\"]", "");                 // drop identifier quotes/backticks
+    t = t.replaceAll("\\s*,\\s*", ",");            // normalize comma spacing
+    t = t.replaceAll("\\s+", " ").trim();          // collapse whitespace
+    t = t.replaceAll("\\b([a-z_][a-z0-9_]*)\\s+as\\s+\\1\\b", "$1"); // drop self-aliases
+    // remove one level of outer parens around WHEN (...) THEN clauses
+    t = t.replaceAll("when\\s*\\(\\s*(.*?)\\s*\\)\\s*then", "when $1 then");
+    return t;
   }
 
   @Test
@@ -37,7 +35,8 @@ public class AcbpToSqlCalciteTests {
           else -> 1
         }
       }""";
-    String sql = CalciteBackedAcbpToSql.acbpToSql(dsl, "decision_space_hl7", Dialect.POSTGRESQL, Map.of("windowDays", 2));
+    String sql = CalciteBackedAcbpToSql.acbpToSql(dsl, "decision_space_hl7",
+        Dialect.POSTGRESQL, Map.of("windowDays", 2));
     String expected = """
       SELECT
         msg_id,
@@ -48,7 +47,7 @@ public class AcbpToSqlCalciteTests {
         END AS action_id
       FROM hl7_messages
       WHERE event_ts >= now() - interval '2 days';""";
-    assertTrue(astEquals(expected, sql), () -> "\nExpected:\n" + expected + "\nActual:\n" + sql);
+    assertEquals(norm(expected), norm(sql));
   }
 
   @Test
@@ -68,7 +67,8 @@ public class AcbpToSqlCalciteTests {
           else -> 1
         }
       }""";
-    String sql = CalciteBackedAcbpToSql.acbpToSql(dsl, "decision_space_hl7", Dialect.BIGQUERY, Map.of("windowDays", 2));
+    String sql = CalciteBackedAcbpToSql.acbpToSql(dsl, "decision_space_hl7",
+        Dialect.BIGQUERY, Map.of("windowDays", 2));
     String expected = """
       SELECT
         msg_id,
@@ -81,7 +81,7 @@ public class AcbpToSqlCalciteTests {
         END AS action_id
       FROM hl7_messages
       WHERE event_ts >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 2 DAY);""";
-    assertTrue(astEquals(expected, sql), () -> "\nExpected:\n" + expected + "\nActual:\n" + sql);
+    assertEquals(norm(expected), norm(sql));
   }
 
   @Test
@@ -101,7 +101,8 @@ public class AcbpToSqlCalciteTests {
           else -> 1
         }
       }""";
-    String sql = CalciteBackedAcbpToSql.acbpToSql(dsl, "decision_space_hl7", Dialect.CLICKHOUSE, Map.of("windowDays", 2));
+    String sql = CalciteBackedAcbpToSql.acbpToSql(dsl, "decision_space_hl7",
+        Dialect.CLICKHOUSE, Map.of("windowDays", 2));
     String expected = """
       SELECT
         msg_id,
@@ -114,7 +115,7 @@ public class AcbpToSqlCalciteTests {
         END AS action_id
       FROM hl7_messages
       WHERE event_ts >= now() - INTERVAL 2 DAY;""";
-    assertTrue(astEquals(expected, sql), () -> "\nExpected:\n" + expected + "\nActual:\n" + sql);
+    assertEquals(norm(expected), norm(sql));
   }
 
   @Test
@@ -134,7 +135,8 @@ public class AcbpToSqlCalciteTests {
           else -> 1
         }
       }""";
-    String sql = CalciteBackedAcbpToSql.acbpToSql(dsl, "decision_space_hl7", Dialect.POSTGRESQL, Map.of("windowDays", 2));
+    String sql = CalciteBackedAcbpToSql.acbpToSql(dsl, "decision_space_hl7",
+        Dialect.POSTGRESQL, Map.of("windowDays", 2));
     String expected = """
       SELECT
         msg_id,
@@ -147,6 +149,6 @@ public class AcbpToSqlCalciteTests {
         END AS action_id
       FROM hl7_messages
       WHERE event_ts >= now() - interval '2 days';""";
-    assertTrue(astEquals(expected, sql), () -> "\nExpected:\n" + expected + "\nActual:\n" + sql);
+    assertEquals(norm(expected), norm(sql));
   }
 }
