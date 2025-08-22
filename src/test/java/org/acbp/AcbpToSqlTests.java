@@ -40,7 +40,7 @@ public class AcbpToSqlTests {
         event_ts,
         CASE
           WHEN (message_type = 'ADT' AND trigger_event IN ('A01','A04') AND patient_class = 'E') THEN 2
-          ELSE 1
+          ELSE 999
         END AS action_id
       FROM hl7_messages
       WHERE event_ts >= now() - interval '2 days';
